@@ -16,17 +16,32 @@ local button = {}
 --setar modo de desenho (fill, line)
 --setar formato
 
+--inserir animacoes de hover 
+--inserir animacoes de click
+--adicionar opcoes de som 
 
-local buttonList = {} --lista com as listas de paramentros dos botoes
+--alguma forma de fazer outline do texto
+--pensar depois em alguma forma de manter lista de botoes
+
+local buttonList = {} --lista com as listas de paramentros dos botoes -->Problema: se temos varios estados, como organizar os botoes por estado? 
+--do jeito atual os botoes sao exibidos na proxima tela. A solucao seria tirar a lista do modulo e deixar por estado ou arranjar um jeito de arrumar a lista por tela
+
 local buttonFunctions = {} --todas as funcoes que uma instancia de botao pode chamar
 
 ---------------------------------------funcoes do "objeto"------------------------------------------
-button.new = function(text, x, y, width, height, color, font, callback, newState)  -- cria uma instancia de botao
+button.newList = function() --limpa a lista para apenas exibir os botoes do estado atual
+  for i=1, #buttonList do 
+    buttonList[i] = nil 
+  end
+end
+
+
+button.new = function(text, x, y, width, height, color, font, callback, ...)  -- cria uma instancia de botao
   local btnCnfg = {}
   btnCnfg.id          = #buttonList+1 --rever essa parte
   btnCnfg.callback    = callback or print
-  btnCnfg.newState    = newState or nil
-  
+  btnCnfg.args        = {...} or nil
+    
   btnCnfg.x           = x or 0
   btnCnfg.y           = y or 0
   btnCnfg.width       = width or 200
@@ -117,7 +132,7 @@ buttonFunctions.mousepressed = function(self, id, x, y, button)
   
   if b.hovered then
     if button == 1 then
-      return b.callback(b.newState) --melhor verificar callback diferente de nil ou deixar print mesmo??
+      return b.callback(unpack(b.args)) --melhor verificar callback diferente de nil ou deixar print mesmo??
     end
   end
 end

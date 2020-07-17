@@ -1,5 +1,4 @@
 local button = {}
-
 --**por ordem de prioridade**
 
 --setar posicao
@@ -28,6 +27,7 @@ local buttonList = {} --lista com as listas de paramentros dos botoes -->Problem
 
 local buttonFunctions = {} --todas as funcoes que uma instancia de botao pode chamar
 
+local touches --tabela com a ordem dos toques na tela
 ---------------------------------------funcoes do "objeto"------------------------------------------
 button.newList = function() --limpa a lista para apenas exibir os botoes do estado atual
   for i=1, #buttonList do 
@@ -52,11 +52,26 @@ button.new = function(text, x, y, width, height, color, font, callback, ...)  --
   btnCnfg.textColor   = {1, 1, 1} 
   
   btnCnfg.visible     = true
-  btnCnfg.hovered     = false            
+  btnCnfg.hovered     = false      
+  btnCnfg.touched     = false 
   btnCnfg.shadow      = false
   
   btnCnfg.font        = font or love.graphics.newFont(24)
   btnCnfg.text        = love.graphics.newText(btnCnfg.font, text or "label")
+  
+  --processar a entrada da posicao, já que podemos aceitar posicao relativa ou absoluta
+  --local screenW, screenH = love.graphics.getDimensions()
+  
+  if type(x) == "string" then
+    x = x:sub(1, -2) --remove o %
+    btnCnfg.x = (tonumber(x)/100) * (screenW-width)
+  end
+  
+  if type(y) == "string" then
+    y = y:sub(1, -2) --remove o %
+    btnCnfg.y = (tonumber(y)/100) * (screenH-height)
+  end
+  ---------------------
 
   table.insert(buttonList, btnCnfg)
   
@@ -88,14 +103,31 @@ button.mousepressed = function(x, y, button) --desenha todos os botoes
   end
 end
 
+  
+button.touchreleased = function(touch, x, y) --desenha todos os botoes
+  for i, btn in ipairs(buttonList) do
+    buttonFunctions:touchreleased(btn.id, x, y, touch)
+  end
+end
+
 -----------------------------Funcoes da instancia---------------------------
 buttonFunctions.update = function(self, id)
   
   local b = buttonList[self.id] or buttonList[id]
-  local mx, my = love.mouse.getPosition()
-          
+  local mx, my = 0, 0 --love.mouse.getPosition() -> FIXFIXFIX criar uma verificacao para nao dar erro quando mouse desabilitado. vale para touch tbm
+  local tx, ty = 0, 0
+  
+  touches = love.touch.getTouches()
+  
+  if #touches >= 1 then
+    tx, ty = love.touch.getPosition(touches[1])
+  end
+  
   b.hovered = mx > b.x and mx < b.x + b.width and 
               my > b.y and my < b.y + b.height
+              
+  b.touched = tx > b.x and tx < b.x + b.width and 
+              ty > b.y and ty < b.y + b.height
 end
 
 buttonFunctions.draw = function(self, id) --passar parametro alternativo id para ser usado na funcao de update ou draw all
@@ -108,7 +140,7 @@ buttonFunctions.draw = function(self, id) --passar parametro alternativo id para
     --love.graphics.setColor(0, 0, 0, 0.2)
     --love.graphics.rectangle("fill", b.x, b.y, b.width, b.height+6)
     
-    if b.hovered then
+    if b.hovered or b.touched then
       love.graphics.setColor(b.hoverColor)
     else
       love.graphics.setColor(b.color)
@@ -127,9 +159,7 @@ buttonFunctions.draw = function(self, id) --passar parametro alternativo id para
 end
 
 buttonFunctions.mousepressed = function(self, id, x, y, button)
-  
   local b = buttonList[self.id] or buttonList[id]
-  
   if b.hovered then
     if button == 1 then
       return b.callback(unpack(b.args)) --melhor verificar callback diferente de nil ou deixar print mesmo??
@@ -137,6 +167,17 @@ buttonFunctions.mousepressed = function(self, id, x, y, button)
   end
 end
 
+buttonFunctions.touchreleased = function(self, id, x, y, touch)
+  local b = buttonList[self.id] or buttonList[id]
+  
+  print(#touches)
+  
+  if b.touched then
+    if touch == touches[1] then
+      return b.callback(unpack(b.args)) --melhor verificar callback diferente de nil ou deixar print mesmo??
+    end
+  end
+end
 
 
 buttonFunctions.setPosition = function(self, newX, newY)
@@ -165,7 +206,7 @@ buttonFunctions.setColor = function(self, newColor, hoverColor, textColor)
 end
 
 buttonFunctions.setText = function(self, newText)
-  buttonList[self.id].text = newText
+  buttonList[self.id].text = love.graphics.newText(buttonList[self.id].font, newText)
 end
 
 buttonFunctions.setVisible = function(self, newVisibility)
